@@ -31,6 +31,10 @@ def check_files(fin, fin_ops ,fin_vac, icall=3):
         files_corr = f0.readlines()
         num_lines = len(files_corr)
 
+    rep_idx = files_corr[0].find("corr")
+    rep_identifier = files_corr[0][rep_idx + 4 : -5]
+    print("[INFO][REP] Representation is", rep_identifier)
+
     if icall == 3:
         if not os.path.exists(fin_vac):
             print("vac list file doesn't exist")
@@ -61,7 +65,7 @@ def check_files(fin, fin_ops ,fin_vac, icall=3):
 
         ##########################################
 
-    return files_corr, files_vac, files_ops
+    return files_corr, files_vac, files_ops, rep_identifier
 
 def read_header(inf):
     """
@@ -152,6 +156,7 @@ def from_disk(fvac, fcorr, fops, bin_size):
         ff = fcorr[i][:-1]
         head = read_header(ff)
         nmeas_corr += head[5]
+    Nop = head[7] * head[8]
     Tmax = head[9]
     Nbin_corr = nmeas_corr // bin_size
 
@@ -187,6 +192,7 @@ def from_disk(fvac, fcorr, fops, bin_size):
         ff = fops[i][:-1]
         head = read_header(ff)
         nmeas_ops += head[5]
+    Nop = head[7] * head[8]
     Tmax = head[9]
     NT = head[3]
     Nbin_ops = nmeas_ops // bin_size
@@ -244,7 +250,54 @@ def from_disk(fvac, fcorr, fops, bin_size):
 
     return vev, corr, ops, Nbin, Tmax, Nop
 
-def set_bins(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax):
+@jit(nopython=True)
+def set_avg(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax, irrep):
+    """
+    This function builds the average over bins
+    of the optimal **connected** correlator.
+    Performance critical: yes
+    Input: the value of corr and vev, the eigenvectors
+            vecc, the number of bins, the number of operators
+            and the number of timeslices.
+    Output: None. the function fills out CMAT and CVAC
+    """
+    # generate the averaged cvac and cmat
+
+    for i in range(Nop):
+        CVAC[Nbin][i] = np.average(vev[:, i]) / ((Tmax - 1.0) * 2.0)
+
+    for i in range(Nop):
+        for j in range(Nop):
+            for it in range(Tmax):
+                sumc = np.average(corr[:, i, j, it])
+                CMAT[Nbin][i][j][it] = sumc / ((Tmax - 1.0) * 2.0)
+
+    ###Subtract vev of vacuum if rep is A1++
+    if irrep == "0RPpR":
+        print("[INFO][REP] A1++ Representation detected, subtracting vev")
+        for i in range(Nop):
+            for j in range(Nop):
+                for it in range(Tmax):
+                    CMAT[Nbin][i][j][it] -= CVAC[Nbin][i] * CVAC[Nbin][j]
+
+    for i in range(Nop):
+        VNORM[i] = 1 / np.sqrt(CMAT[Nbin][i][i][0])
+
+    for j in range(Nop):
+        for i in range(j, Nop):
+            for it in range(Tmax):
+                sumc = (
+                    0.5
+                    * (CMAT[Nbin][i][j][it] + CMAT[Nbin][j][i][it])
+                    * VNORM[i]
+                    * VNORM[j]
+                )
+                CMAT[Nbin][i][j][it] = sumc
+                CMAT[Nbin][j][i][it] = sumc
+
+
+@jit(nopython=True, parallel=True)
+def set_bins(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax, irrep):
     """
     This function builds the jacknife bins
     of the optimal **connected** correlator.
@@ -265,7 +318,16 @@ def set_bins(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax):
                     sumc = np.sum(corr[:, i, j, it])
                     CMAT[inb, i, j, it] = (sumc - corr[inb, i, j, it]) / (
                         (Nbin - 1.0) * (Tmax - 1.0) * 2.0
-                    ) - CVAC[inb, i] * CVAC[inb, j]
+                    )
+
+        # Unfortunate that this check has to be completed for every bin,
+        # however it is better to do Nbin checks than having to symmetrize twice per bin
+
+        if irrep == "0RPpR":
+            for i in range(Nop):
+                for j in range(Nop):
+                    for it in range(Tmax):
+                        CMAT[inb, i, j, it] -= CVAC[inb, i] * CVAC[inb, j]
 
         for j in range(Nop):
             for i in range(j, Nop):
@@ -279,48 +341,9 @@ def set_bins(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax):
                     CMAT[inb][i][j][it] = sumc
                     CMAT[inb][j][i][it] = sumc
 
-
-
-def set_avg(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax):
-    """
-    This function builds the average over bins
-    of the optimal **connected** correlator.
-    Performance critical: yes
-    Input: the value of corr and vev, the eigenvectors
-            vecc, the number of bins, the number of operators
-            and the number of timeslices.
-    Output: None. the function fills out CMAT and CVAC
-    """
-    # generate the averaged cvac and cmat
-
-    for i in range(Nop):
-        CVAC[Nbin][i] = np.average(vev[:, i]) / ((Tmax - 1.0) * 2.0)
-
-    for i in range(Nop):
-        for j in range(Nop):
-            for it in range(Tmax):
-                sumc = np.average(corr[:, i, j, it])
-                CMAT[Nbin][i][j][it] = (
-                    sumc / ((Tmax - 1.0) * 2.0) - CVAC[Nbin][i] * CVAC[Nbin][j]
-                )
-    for i in range(Nop):
-        VNORM[i] = 1 / np.sqrt(CMAT[Nbin][i][i][0])
-
-    for j in range(Nop):
-        for i in range(j, Nop):
-            for it in range(Tmax):
-                sumc = (
-                    0.5
-                    * (CMAT[Nbin][i][j][it] + CMAT[Nbin][j][i][it])
-                    * VNORM[i]
-                    * VNORM[j]
-                )
-                CMAT[Nbin][i][j][it] = sumc
-                CMAT[Nbin][j][i][it] = sumc
-
-files_corrs, files_vac, files_ops = check_files("list_corr", "list_ops", "list_vac")
+files_corrs, files_vac, files_ops, irrep = check_files("list_corr", "list_ops", "list_vac")
 vev, corr, ops, Nbin, Tmax, Nop = from_disk(files_vac, files_corrs, files_ops, bin_size=1)
-
+print("[INFO][REP] Representation", irrep)
 #corr is the raw data for the correlation matrix directly from the fortran code
 #ops is the raw data for glueball timeslices
 
@@ -350,9 +373,9 @@ for N4 in range(0,LX4):
         #print(np.average(corr3[:,:,:,it2], axis=0))
 
 print("[COMPARE] RAW DATA AVERAGE (NT = 0) DIRECTLY FROM FORTRAN")
-print(np.average(corr[:,:,:,0],axis=2))
+print(np.average(corr[:,[0,1],:,0],axis=2))
 print("[COMPARE] RAW DATA AVERAGE (NT = 0) FROM GLUEBALL TIMESLICES")
-print(np.average(corr3[:,:,:,0],axis=2))
+print(np.average(corr3[:,[0,1],:,0],axis=2))
 
 print("[INFO] NORMALIZING AND SETTING BINS")
 
@@ -364,8 +387,8 @@ CMAT = np.empty(
 )
 VNORM = np.empty(Nop, dtype="f8")
 
-set_avg(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax)
-set_bins(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax)
+set_avg(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax,irrep)
+set_bins(CMAT, CVAC, VNORM, vev, corr, Nbin, Nop, Tmax,irrep)
 
 CVAC2 = np.empty(Nbin + 1, dtype=str(Nop) + "f8")
 CMAT2 = np.empty(
@@ -373,8 +396,8 @@ CMAT2 = np.empty(
 )
 VNORM2 = np.empty(Nop, dtype="f8")
 
-set_avg(CMAT2, CVAC2, VNORM2, vev, corr3, Nbin, Nop, Tmax)
-set_bins(CMAT2, CVAC2, VNORM2, vev, corr3, Nbin, Nop, Tmax)
+set_avg(CMAT2, CVAC2, VNORM2, vev, corr3, Nbin, Nop, Tmax, irrep)
+set_bins(CMAT2, CVAC2, VNORM2, vev, corr3, Nbin, Nop, Tmax, irrep)
 
 print("[COMPARE] CORRELATION MATRIX (NT = 0) DIRECTLY FROM FORTRAN")
 print(CMAT2[Nbin,:,:,0])
