@@ -2,13 +2,14 @@ using Pkg; Pkg.activate("./GlueballsJulia")
 using GlueballsJulia
 using ProgressMeter
 using HDF5
+using BenchmarkTools
 
 f = h5open("hdf5/glue_correlators.hdf5","r")["ensemble/0RPpR"]
 
 T = read(f,"NT")
 L = read(f,"NX")
 Nops  = read(f,"Nop")
-Nmeas = 10 # read(f,"Nmeas")
+Nmeas = 100 #read(f,"Nmeas")
 # Permute indices for better acces 
 corr  = permutedims(f["corr"][:,:,:,1:Nmeas],(4,2,3,1)) # size is (Nmeas Nops, Nops, T/2+1)
 ops   = permutedims(f["ops"][:,:,1:Nmeas],(3,2,1))  # size is (Nmeas, Nops, T) 
@@ -20,11 +21,15 @@ vev   = permutedims(f["vev"][:,1:Nmeas],(2,1))  # size is (Nmeas, Nops)
 function reconstruct_corr(ops)
     Nmeas, Nops, T = size(ops)
     corr = zeros(Nmeas,Nops,Nops,T)
-    for t1 in 1:T
+    @showprogress for t1 in 1:T
         for t2 in 1:T
             Δt = mod(t2-t1,T)
-            for op1 in 1:Nops, op2 in 1:Nops, n in 1:Nmeas
-                corr[n,op2,op1,Δt+1] += (ops[n,op1,t1]*ops[n,op2,t2] + ops[n,op2,t1]*ops[n,op1,t2])/2
+            for op1 in 1:Nops
+                for op2 in 1:Nops
+                    for n in 1:Nmeas
+                        corr[n,op2,op1,Δt+1] += (ops[n,op1,t1]*ops[n,op2,t2] + ops[n,op2,t1]*ops[n,op1,t2])/2
+                    end
+                end
             end
         end
     end
