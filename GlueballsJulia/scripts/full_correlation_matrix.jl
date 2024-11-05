@@ -13,7 +13,7 @@ function reconstruct_corr(ops1,ops2)
     T = T1 
 
     corr = zeros(Nmeas,Nops1,Nops2,T)
-    for t1 in 1:T
+    @inbounds for t1 in 1:T
         for t2 in 1:T
             Δt = mod(t2-t1,T)
             for op1 in 1:Nops1
@@ -28,7 +28,14 @@ function reconstruct_corr(ops1,ops2)
     return corr
 end
 
-f_glue = h5open("hdf5/glue_correlators.hdf5","r")["ensemble/0RPmR"]
+
+id_glue = "0RPmR"
+id_ferm = "g5" 
+
+id_glue = "0RPpR"
+id_ferm = "id" 
+
+f_glue = h5open("hdf5/glue_correlators.hdf5","r")["ensemble/$id_glue"]
 f_ferm = h5open("hdf5/meson_correlators.hdf5","r")["M3"]
 T = read(f_glue,"NT")
 L = read(f_glue,"NX")
@@ -42,15 +49,15 @@ Nops = Nops_glue + Nops_mes
 
 # Create a hdf5 dataset for the full correlation matrix without ever loading it into memory
 # Only, later we will write to the file in batches.
-f = h5open("hdf5/correlation_matrix.hdf5","w")
-create_dataset(f, "full_correlation_matrix_g5", Float64, (Nmeas,Nops,Nops,T))
+f = h5open("hdf5/correlation_matrix_$id_ferm.hdf5","w")
+create_dataset(f, "full_correlation_matrix_$id_ferm", Float64, (Nmeas,Nops,Nops,T))
 
 # Construct full correlation matrices in batches to save rAM
-n_batch = 20
+n_batch = 100
 @showprogress for (i,n) in enumerate(Iterators.partition(1:Nmeas, n_batch)) 
-    corr_meson = f_ferm["correlation_matrix_g5_singlet"][:,:,n,:]
-    ops_mesFUN = f_ferm["singlet_loop_g5_FUN"][:,n,:]
-    ops_mesAS  = f_ferm["singlet_loop_g5_AS"][:,n,:]
+    corr_meson = f_ferm["correlation_matrix_$(id_ferm)_singlet"][:,:,n,:]
+    ops_mesFUN = f_ferm["singlet_loop_$(id_ferm)_FUN"][:,n,:]
+    ops_mesAS  = f_ferm["singlet_loop_$(id_ferm)_AS"][:,n,:]
     ops_glue   = f_glue["ops"][:,:,n]
     ops_mes    = cat(ops_mesFUN, ops_mesAS,dims=1) # NOTE: The meson operators are ordered as (FUN, AS) in ascending order
     
@@ -71,6 +78,10 @@ n_batch = 20
     coloumn2 = cat(corr_cross_transpose,corr_mes,dims=3)
     full = cat(coloumn1,coloumn2,dims=2)
     
-    f["full_correlation_matrix_g5"][n,:,:,:] = full
+    f["full_correlation_matrix_$(id_ferm)"][n,:,:,:] = full
 end
+f["T"] = T
+f["L"] = L
+f["Nmeas"] = Nmeas
+f["Nops"] = Nops
 close(f)
