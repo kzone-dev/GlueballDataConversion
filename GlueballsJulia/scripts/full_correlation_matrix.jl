@@ -35,11 +35,15 @@ L = read(f_glue,"NX")
 Nops = read(f_glue,"Nop")
 Nmeas_glue = read(f_glue,"Nmeas")
 Nmeas_mes = length(read(f_ferm,"M3/plaquette"))
+configs = read(f_ferm,"M3/configurations")
 Nmeas = min(Nmeas_glue,Nmeas_mes) # NOTE: The last 7 configurations for the glueballs are missing
+
+f = h5open("correlation_matrix.hdf5","w")
+create_dataset(f, "full_correlation_matrix", Float64, (Nmeas,169,169,T))
 
 # Construct full correlation matrices in batches to save rAM
 n_batch = 20
-for n in Iterators.partition(1:Nmeas, n_batch) 
+@showprogress for (i,n) in enumerate(Iterators.partition(1:Nmeas, n_batch)) 
     corr_meson = f_ferm["M3/correlation_matrix_g5_singlet"][:,:,n,:]
     ops_mesFUN = f_ferm["M3/singlet_loop_g5_FUN"][:,n,:]
     ops_mesAS  = f_ferm["M3/singlet_loop_g5_AS"][:,n,:]
@@ -62,4 +66,7 @@ for n in Iterators.partition(1:Nmeas, n_batch)
     coloumn1 = cat(corr_glue,corr_cross,dims=3)
     coloumn2 = cat(corr_cross_transpose,corr_mes,dims=3)
     full = cat(coloumn1,coloumn2,dims=2)
+    
+    f["full_correlation_matrix"][n,:,:,:] = full
 end
+close(f)
