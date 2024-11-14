@@ -50,7 +50,7 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
     create_dataset(f, "full_correlation_matrix", Float64, (Nmeas,Nops,Nops,T))
 
     # Construct full correlation matrices in batches to save rAM
-    @showprogress for (i,n) in enumerate(Iterators.partition(1:Nmeas, n_batch)) 
+    @showprogress for n in Iterators.partition(1:Nmeas, n_batch) 
         corr_meson = f_ferm["correlation_matrix_$(id_ferm)_singlet"][:,:,n,:]
         ops_mesFUN = f_ferm["singlet_loop_$(id_ferm)_FUN"][:,n,:]
         ops_mesAS  = f_ferm["singlet_loop_$(id_ferm)_AS"][:,n,:]
