@@ -4,11 +4,19 @@ using ProgressMeter
 using HDF5
 using BenchmarkTools
 
+function _copy_lattice_parameters(outfile,infile,ensemble;group="")
+    file = h5open(infile)[ensemble]
+    entries = filter(!contains(r"(correlation_matrix|singlet_loop)") ,keys(file))
+    for entry in entries
+        label = joinpath(group,entry)
+        h5write(outfile,label,read(file,entry))
+    end
+end
 function reconstruct_corr(ops1,ops2)
     Nmeas1, Nops1, T1 = size(ops1)
     Nmeas2, Nops2, T2 = size(ops2)
     @assert T1 == T2
-    @assert Nmeas1 == Nmeas1
+    @assert Nmeas1 == Nmeas2
     Nmeas = Nmeas1 
     T = T1 
 
@@ -27,7 +35,7 @@ function reconstruct_corr(ops1,ops2)
     end
     return corr
 end
-function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens; n_batch = 200)
+function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens; n_batch = 200, mode="w", save_vev = false)
     f_glue = h5open(fn_glue,"r")[id_glue]
     f_ferm = h5open(fn_mes,"r")[id_ens]
 
@@ -46,8 +54,11 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
 
     # Create a hdf5 dataset for the full correlation matrix without ever loading it into memory
     # Only, later we will write to the file in batches.
-    f = h5open(fn_full,"w")
+    f = h5open(fn_full,mode)
+    # copy lattice parameters from fermion files
+    _copy_lattice_parameters(fn_full,fn_mes,id_ens;group="")
     create_dataset(f, "full_correlation_matrix", Float64, (Nmeas,Nops,Nops,T))
+    save_vev && create_dataset(f, "full_vev", Float64, (Nmeas,Nops))
 
     # Construct full correlation matrices in batches to save rAM
     @showprogress for n in Iterators.partition(1:Nmeas, n_batch) 
@@ -64,6 +75,13 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
         corr_mes = permutedims(corr_meson,(3,1,2,4))
         ops_mes = permutedims(ops_mes,(2,1,3))
 
+        if save_vev
+            vev_glue   = f_glue["vev"][:,n]
+            vev_mesAS  = permutedims(dropdims(mean(ops_mesAS,dims=3),dims=3))
+            vev_mesFUN = permutedims(dropdims(mean(ops_mesFUN,dims=3),dims=3))
+            vev_full   = permutedims(vcat(vev_mesFUN,vev_mesAS,vev_glue))
+        end
+        
         # Create block-diagonal gluon matrix and meson-gluon cross corelator
         corr_glue  = reconstruct_corr(ops_glue,ops_glue)
         corr_cross = reconstruct_corr(ops_glue,ops_mes)
@@ -75,6 +93,9 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
         full = cat(coloumn1,coloumn2,dims=2)
         
         f["full_correlation_matrix"][n,:,:,:] = full
+        if save_vev
+            f["full_vev"][n,:] = vev_full
+        end
     end
     f["T"] = T
     f["L"] = L
@@ -98,4 +119,4 @@ id_ens  = "M3"
 fn_glue = "hdf5/glue_correlators.hdf5"
 fn_mes  = "hdf5/meson_correlators.hdf5"
 fn_full = "hdf5/correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens)
+write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev = true)

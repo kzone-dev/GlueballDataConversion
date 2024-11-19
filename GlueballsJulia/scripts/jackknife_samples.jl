@@ -5,14 +5,22 @@ using HDF5
 using BenchmarkTools
 using Statistics
 
+function _copy_lattice_parameters(outfile,infile,ensemble;group="")
+    file = h5open(infile)[ensemble]
+    entries = filter(!contains(r"(correlation_matrix|singlet_loop)") ,keys(file))
+    for entry in entries
+        label = joinpath(group,entry)
+        h5write(outfile,label,read(file,entry))
+    end
+end
 function resample_full_correlator(file_in, file_out; n_batch = 100)
+    _copy_lattice_parameters(file_out,file_in,"")
     f1 = h5open(file_in,"r")
     f2 = h5open(file_out,"w")
 
     Nmeas = read(f1,"Nmeas")
     Nops  = read(f1,"Nops")
     T     = read(f1,"T")
-    L     = read(f1,"L")
     corr  = f1["full_correlation_matrix"]
     
     # Construct full correlation matrices in batches to save RAM
@@ -37,11 +45,6 @@ function resample_full_correlator(file_in, file_out; n_batch = 100)
         end
         f2["correlation_matrix_resample"][n,:,:,:] = resample_corr[eachindex(n),:,:,:]
     end
-    f2["T"] = T
-    f2["L"] = L
-    f2["Nmeas"] = Nmeas
-    f2["Nops"] = Nops
-
     close(f1)
     close(f2)
 end
