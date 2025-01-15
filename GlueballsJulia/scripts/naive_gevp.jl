@@ -2,6 +2,10 @@ using Pkg; Pkg.activate("GlueballsJulia")
 using HDF5
 using ProgressMeter
 using LatticeUtils
+using LinearAlgebra
+BLAS.set_num_threads(1)
+@show Threads.nthreads()
+
 function _copy_lattice_parameters(outfile,infile;group="")
     file = h5open(infile)
     entries = filter(!contains(r"(correlation_matrix|singlet_loop|vev)") ,keys(file))
@@ -10,7 +14,18 @@ function _copy_lattice_parameters(outfile,infile;group="")
         h5write(outfile,label,read(file,entry))
     end
 end
+function eigenvalues_eigenvectors_from_samples_threaded(batch; t0, imag_thresh)
+    n_cpus = Threads.nthreads()
+    n_batch = size(batch)[3]
 
+    f = x -> eigenvalues_eigenvectors_from_samples(batch[:,:,x,:]; t0, imag_thresh)
+    ranges = Iterators.partition(1:n_batch,n_cpus)
+    res = fetch.([Threads.@spawn f(i) for i in ranges])
+
+    vals = cat(first.(res)...,dims=2)
+    vecs = cat(last.(res)...,dims=3)
+    return vals, vecs
+end
 function gevp_on_resamples(file_in, file_out; n_batch, t0, imag_thresh)
     _copy_lattice_parameters(file_out,file_in)
 
@@ -27,7 +42,8 @@ function gevp_on_resamples(file_in, file_out; n_batch, t0, imag_thresh)
     @showprogress for n in Iterators.partition(1:Nmeas, n_batch)
         # change data layout of data to match the required call to the gevp function
         batch = permutedims(resamples[n,:,:,:],(3,2,1,4))
-        vals, vecs = eigenvalues_eigenvectors_from_samples(batch; t0, imag_thresh)
+        #vals0, vecs0 = eigenvalues_eigenvectors_from_samples(batch; t0, imag_thresh)
+        vals , vecs  = eigenvalues_eigenvectors_from_samples_threaded(batch; t0, imag_thresh)
         f["eigenvalues"][:,n,:] = vals
         f["eigenvectors"][:,:,n,:] = vecs
     end
@@ -35,9 +51,6 @@ function gevp_on_resamples(file_in, file_out; n_batch, t0, imag_thresh)
     close(fid)
 end
 
-using LinearAlgebra
-BLAS.set_num_threads(1) 
-
 file_in  = "./hdf5/correlation_matrix_g5_resamples.hdf5"
-file_out = "./hdf5/gevp_results_g5_resamples_t0_3.hdf5"
-gevp_on_resamples(file_in, file_out; n_batch = 50, t0 = 1, imag_thresh = 1E-11)
+file_out = "./hdf5/gevp_results_g5_resamples_parallel.hdf5"
+gevp_on_resamples(file_in, file_out; n_batch = Threads.nthreads()*5, t0 = 1, imag_thresh = +Inf)
