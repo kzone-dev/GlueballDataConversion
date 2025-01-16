@@ -4,7 +4,6 @@ using HDF5
 using ProgressMeter
 using LatticeUtils
 using LinearAlgebra
-using Statistics
 BLAS.set_num_threads(1)
 @show Threads.nthreads()
 
@@ -74,8 +73,8 @@ function apply_jackknife_gevp(file_in, file_out; n_batch)
     @showprogress desc="jackknife error" for n in Iterators.partition(1:Nmeas, n_batch)
         vals_batch = vals_samples[:,n,:]
         vecs_batch = vecs_samples[:,:,n,:]
-        Δvals += sqrt(Nmeas-1)*std(vals_batch,mean=vals,dims=2,corrected=false)
-        Δvecs += sqrt(Nmeas-1)*std(vecs_batch,mean=vecs,dims=3,corrected=false)
+        Δvals += sqrt.((Nmeas.-1)./Nmeas.*sum((vals_batch .- vals).^2,dims=2))
+        Δvecs += sqrt.((Nmeas.-1)./Nmeas.*sum((vecs_batch .- vecs).^2,dims=3))
     end
     close(fid)
 
@@ -92,6 +91,6 @@ file_out = "./hdf5/gevp_results_g5_t0_1.hdf5"
 t0 = 1
 n_batch = Threads.nthreads()*5
 
-gevp_on_resamples(file_in, file_tmp; n_batch, t0 )
+#gevp_on_resamples(file_in, file_tmp; n_batch, t0 )
 apply_jackknife_gevp(file_tmp, file_out; n_batch )
-rm(file_tmp)
+#rm(file_tmp)
