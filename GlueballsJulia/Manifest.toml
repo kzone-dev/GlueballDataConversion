@@ -2,7 +2,7 @@
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "e3dda23617b83bb8dc9bbc87b776d87242de7aff"
+project_hash = "26d331bb1ba0cca75917688722a7ea52f6bee8fd"
 
 [[deps.Accessors]]
 deps = ["CompositionsBase", "ConstructionBase", "InverseFunctions", "LinearAlgebra", "MacroTools", "Markdown"]
