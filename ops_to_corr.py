@@ -301,7 +301,8 @@ def write_irrep_data_to_file(filename, irrep, files_corrs, files_vac, files_ops,
     f.create_dataset(ensemble+"/"+"Nmeas"  ,data=Nmeas)
 
 #irreps  = ["0RAPmI","0RAPmR","0RAPpI","0RAPpR","0RPmI","0RPmR","0RPpI","0RPpR","ERPmI","ERPmR","ERPpI","ERPpR","TRAPmI","TRAPmR","TRAPpI","TRAPpR","TRPmI","TRPmR","TRPpI","TRPpR"]
-irreps  = ["0RPmI","0RPmR","0RPpI","0RPpR"]
+#irreps  = ["0RPmI","0RPmR","0RPpI","0RPpR"]
+irreps  = ["0RPmR","0RPpR"]
 
 for ir in irreps:
     write_listfiles(data_dir,ir)
