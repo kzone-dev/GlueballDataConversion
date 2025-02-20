@@ -5,6 +5,7 @@ import scipy.linalg as la
 from natsort import natsorted
 from pathlib import Path
 data_dir = "/home/fabian/Documents/Physics/Data/DataCSD/Glueballs"
+data_dir = "/home/fabian/Dokumente/Physics/Data/DataCSD/Glueballs"
 
 def check_files(fin, fin_ops ,fin_vac, icall=3):
     """
@@ -279,8 +280,8 @@ def remove_listfiles(fn_cor, fn_ops ,fn_vac):
     os.remove(fn_ops)
     os.remove(fn_vac)
 
-def write_irrep_data_to_file(filename, irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, run, mode='a'):
-    ensemble = "ensemble"+"/"+irrep+"/"+run
+def write_irrep_data_to_file(filename, irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, mode='a'):
+    ensemble = "ensemble"+"/"+irrep
     f = h5py.File(filename, mode)
     f.create_dataset(ensemble+"/"+"files_corrs",data=files_corrs)
     f.create_dataset(ensemble+"/"+"files_vac"  ,data=files_vac)
@@ -300,18 +301,11 @@ def write_irrep_data_to_file(filename, irrep, files_corrs, files_vac, files_ops,
     f.create_dataset(ensemble+"/"+"Nblock" ,data=Nblock)
     f.create_dataset(ensemble+"/"+"Nmeas"  ,data=Nmeas)
 
-#irreps  = ["0RAPmI","0RAPmR","0RAPpI","0RAPpR","0RPmI","0RPmR","0RPpI","0RPpR","ERPmI","ERPmR","ERPpI","ERPpR","TRAPmI","TRAPmR","TRAPpI","TRAPpR","TRPmI","TRPmR","TRPpI","TRPpR"]
-#irreps  = ["0RPmI","0RPmR","0RPpI","0RPpR"]
 irreps  = ["0RPmR","0RPpR"]
 
 for ir in irreps:
     write_listfiles(data_dir,ir)
-    files_corrs, files_vac, files_ops, irrep = check_files("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt")
+    files_corrs, files_vac, files_ops, irrep = check_files("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt");
+    vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas = from_disk(files_vac, files_corrs, files_ops, bin_size=1);
+    write_irrep_data_to_file("hdf5/glue_correlators.hdf5", irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, mode='a')
     remove_listfiles("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt")
-    # (FZ) If we use from_disk() for the full dataset, we can easily use more memory than available on a typical laptop
-    # For now, I will parse every run seperately into the same hdf5-file, this changes the structure slighty.
-    # In a second step, I will recover the old layout
-    for i, val in enumerate(files_corrs):
-        run = Path(val).parts[-2]
-        vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas = from_disk([files_vac[i]], [files_corrs[i]], [files_ops[i]], bin_size=1);
-        write_irrep_data_to_file("hdf5/glue_correlators.hdf5", irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, run, mode='a')
