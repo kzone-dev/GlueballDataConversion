@@ -27,7 +27,7 @@ function reconstruct_corr(ops1,ops2)
             for op1 in 1:Nops1
                 for op2 in 1:Nops2
                     for n in 1:Nmeas
-                        corr[n,op1,op2,Δt+1] += (ops1[n,op1,t1]*ops2[n,op2,t2] + ops2[n,op2,t1]*ops1[n,op1,t2])/2
+                        corr[n,op1,op2,Δt+1] += (ops1[n,op1,t1]*ops2[n,op2,t2] + ops2[n,op2,t1]*ops1[n,op1,t2])/2/T
                     end
                 end
             end
@@ -60,11 +60,15 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
     create_dataset(f, "full_correlation_matrix", Float64, (Nmeas,Nops,Nops,T))
     save_vev && create_dataset(f, "full_vev", Float64, (Nmeas,Nops))
 
+    # Number of fermions
+    Nf_f = 2
+    Nf_a = 3
+
     # Construct full correlation matrices in batches to save rAM
     @showprogress for n in Iterators.partition(1:Nmeas, n_batch) 
         corr_meson = f_ferm["correlation_matrix_$(id_ferm)_singlet"][:,:,n,:]
-        ops_mesFUN = f_ferm["singlet_loop_$(id_ferm)_FUN"][:,n,:]
-        ops_mesAS  = f_ferm["singlet_loop_$(id_ferm)_AS"][:,n,:]
+        ops_mesFUN = sqrt.(Nf_f) .* f_ferm["singlet_loop_$(id_ferm)_FUN"][:,n,:]
+        ops_mesAS  = sqrt.(Nf_a) .* f_ferm["singlet_loop_$(id_ferm)_AS"][:,n,:]
         ops_glue   = f_glue["ops"][:,:,n]
         ops_mes    = cat(ops_mesFUN, ops_mesAS,dims=1) # NOTE: The meson operators are ordered as (FUN, AS) in ascending order
         

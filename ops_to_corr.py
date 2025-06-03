@@ -4,8 +4,6 @@ import numpy as np
 import scipy.linalg as la
 from natsort import natsorted
 from pathlib import Path
-data_dir = "/home/fabian/Documents/Physics/Data/DataCSD/Glueballs"
-data_dir = "/home/fabian/Dokumente/Physics/Data/DataCSD/Glueballs"
 
 def check_files(fin, fin_ops ,fin_vac, icall=3):
     """
@@ -303,9 +301,12 @@ def write_irrep_data_to_file(filename, irrep, files_corrs, files_vac, files_ops,
 
 irreps  = ["0RPmR","0RPpR"]
 
+data_dir = "/home/fabian/Documents/Physics/Data/DataCSD/Glueballs"
+data_dir = "/home/fabian/Dokumente/Physics/Data/DataCSD/GlueballsNt64"
+
 for ir in irreps:
     write_listfiles(data_dir,ir)
     files_corrs, files_vac, files_ops, irrep = check_files("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt");
     vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas = from_disk(files_vac, files_corrs, files_ops, bin_size=1);
-    write_irrep_data_to_file("hdf5/glue_correlators.hdf5", irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, mode='a')
+    write_irrep_data_to_file("hdf5/glue_correlators_Nt64_mf0-0.70.hdf5", irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, mode='a')
     remove_listfiles("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt")

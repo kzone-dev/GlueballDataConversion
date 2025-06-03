@@ -17,8 +17,9 @@ function reconstruct_corr(ops1,ops2)
             Δt = mod(t2-t1,T)
             for op1 in 1:Nops1
                 for op2 in 1:Nops2
+                    # TODO: Figure out if I am missing the factor T 
                     for n in 1:Nmeas
-                        corr[n,op1,op2,Δt+1] += (ops1[n,op1,t1]*ops2[n,op2,t2] + ops2[n,op2,t1]*ops1[n,op1,t2])/2
+                        corr[n,op1,op2,Δt+1] += (ops1[n,op1,t1]*ops2[n,op2,t2] + ops2[n,op2,t1]*ops1[n,op1,t2])/2/T
                     end
                 end
             end

@@ -1,0 +1,4 @@
+[submodule "MixedRepSinglets"]
+	path = MixedRepSinglets
+	url = https://github.com/fzierler/MixedRepSinglets
+	branch = for_glueballs
