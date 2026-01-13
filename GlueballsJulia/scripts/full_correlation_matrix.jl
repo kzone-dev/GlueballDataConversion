@@ -1,5 +1,4 @@
-using Pkg; Pkg.activate("./GlueballsJulia")
-using GlueballsJulia
+using Pkg; Pkg.activate(".")
 using ProgressMeter
 using HDF5
 using BenchmarkTools
@@ -35,7 +34,7 @@ function reconstruct_corr(ops1,ops2)
     end
     return corr
 end
-function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens; n_batch = 200, mode="w", save_vev = false)
+function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens; n_batch = 200, mode="w", save_vev =false)
     f_glue = h5open(fn_glue,"r")[id_glue]
     f_ferm = h5open(fn_mes,"r")[id_ens]
 
@@ -43,14 +42,15 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
     L = read(f_glue,"NX")
 
     # get total number of operators 
-    Nops_glue = read(f_glue,"Nop")
+    Nops_glue = read(f_glue,"Nops")
     Nops_mes  = length(read(f_ferm,"Wuppertal_levels_FUN")) + length(read(f_ferm,"Wuppertal_levels_AS"))
     Nops = Nops_glue + Nops_mes
 
     # check that the number of measurements matches
     Nmeas_glue = read(f_glue,"Nmeas")
-    Nmeas_mes = length(read(f_ferm,"plaquette"))
-    Nmeas = min(Nmeas_glue,Nmeas_mes) # NOTE: The last 7 configurations for the glueballs are missing
+    #Nmeas_mes = length(read(f_ferm,"plaquette")) # This is empty now... 
+    Nmeas_mes = size(f_ferm["correlation_matrix_$(id_ferm)_singlet"],3)                                    
+    Nmeas = min(Nmeas_glue,Nmeas_mes) 
 
     # Create a hdf5 dataset for the full correlation matrix without ever loading it into memory
     # Only, later we will write to the file in batches.
@@ -66,10 +66,12 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
 
     # Construct full correlation matrices in batches to save rAM
     @showprogress for n in Iterators.partition(1:Nmeas, n_batch) 
+        
+        @show "Processing measurements $n"
         corr_meson = f_ferm["correlation_matrix_$(id_ferm)_singlet"][:,:,n,:]
         ops_mesFUN = sqrt.(Nf_f) .* f_ferm["singlet_loop_$(id_ferm)_FUN"][:,n,:]
         ops_mesAS  = sqrt.(Nf_a) .* f_ferm["singlet_loop_$(id_ferm)_AS"][:,n,:]
-        ops_glue   = f_glue["ops"][:,:,n]
+        ops_glue   = f_glue[id_glue*"_interp_ops"][:,:,n]
         ops_mes    = cat(ops_mesFUN, ops_mesAS,dims=1) # NOTE: The meson operators are ordered as (FUN, AS) in ascending order
         
         # Change memory layout for better access patterns
@@ -80,7 +82,7 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
         ops_mes = permutedims(ops_mes,(2,1,3))
 
         if save_vev
-            vev_glue   = f_glue["vev"][:,n]
+            vev_glue   = f_glue[id_glue*"_vev"][:,n]
             vev_mesAS  = permutedims(dropdims(mean(ops_mesAS,dims=3),dims=3))
             vev_mesFUN = permutedims(dropdims(mean(ops_mesFUN,dims=3),dims=3))
             vev_full   = permutedims(vcat(vev_mesFUN,vev_mesAS,vev_glue))
@@ -105,22 +107,38 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
     f["L"] = L
     f["Nmeas"] = Nmeas
     f["Nops"] = Nops
+    @show "Wrote full correlation matrix to $fn_full"
     close(f)
 end
 
-
-id_glue = "ensemble/0RPmR"
-id_ferm = "g5" 
-id_ens  = "M3"
-fn_glue = "hdf5/glue_correlators.hdf5"
-fn_mes  = "hdf5/meson_correlators.hdf5"
-fn_full = "hdf5/correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens)
-
-id_glue = "ensemble/0RPpR"
+id_glue = "A1pp"
 id_ferm = "id" 
 id_ens  = "M3"
-fn_glue = "hdf5/glue_correlators.hdf5"
-fn_mes  = "hdf5/meson_correlators.hdf5"
-fn_full = "hdf5/correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev = true)
+fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/M3_results.h5"
+fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
+fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
+write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
+
+id_glue = "A1mp"
+id_ferm = "g5" 
+id_ens  = "M3"
+fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/"*"$id_ens"*"_results.h5"
+fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
+fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
+write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
+
+id_glue = "A1pp"
+id_ferm = "id" 
+id_ens  = "M4"
+fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/"*"$id_ens"*"_results.h5"
+fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
+fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
+write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
+
+id_glue = "A1mp"
+id_ferm = "g5" 
+id_ens  = "M4"
+fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/"*"$id_ens"*"_results.h5"
+fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
+fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
+write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)

@@ -1,4 +1,4 @@
-using Pkg; Pkg.activate("./GlueballsJulia")
+using Pkg; Pkg.activate(".")
 using HDF5
 using Statistics
 using ProgressMeter
@@ -35,6 +35,18 @@ function bin_correlation_marix(file_in,file_out; binsize = 8, batchsize = 50)
     _copy_lattice_parameters(file_out,file_in;group="")
 end
 
-file_in  = "hdf5/correlation_matrix_g5.hdf5"
-file_out = "hdf5/correlation_matrix_g5_bin8.hdf5"
-bin_correlation_marix(file_in,file_out; binsize = 8, batchsize = 50)
+file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_id.hdf5"
+file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_id_bin16.hdf5"
+bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
+
+file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_g5.hdf5"
+file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_g5_bin16.hdf5"
+bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
+
+file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_id.hdf5"
+file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_id_bin16.hdf5"
+bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
+
+file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_g5.hdf5"
+file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_g5_bin16.hdf5"
+bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
