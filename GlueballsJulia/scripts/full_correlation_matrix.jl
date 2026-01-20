@@ -1,7 +1,19 @@
-using Pkg; Pkg.activate(".")
+using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.update(); Pkg.precompile(); Pkg.activate(".")
+Pkg.add("ArgParse")
 using ProgressMeter
 using HDF5
 using BenchmarkTools
+using ArgParse
+
+function parse_commandline()
+    s = ArgParseSettings()
+    @add_arg_table s begin
+        "--dir_glue"; help="Path to glueball data file"; required=true
+        "--dir_mes"; help="Path to meson singlet correlator file"; required=true
+        "--dir_full"; help="Path to output full correlation matrix file"; required=true
+    end
+    return parse_args(s)
+end
 
 function _copy_lattice_parameters(outfile,infile,ensemble;group="")
     file = h5open(infile)[ensemble]
@@ -111,34 +123,20 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
     close(f)
 end
 
-id_glue = "A1pp"
-id_ferm = "id" 
-id_ens  = "M3"
-fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/M3_results.h5"
-fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
-fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
+args = parse_commandline()
+output_dir_glue = args["dir_glue"]
+output_dir_mes  = args["dir_mes"]
+output_dir_full = args["dir_full"]
 
-id_glue = "A1mp"
-id_ferm = "g5" 
-id_ens  = "M3"
-fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/"*"$id_ens"*"_results.h5"
-fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
-fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
-
-id_glue = "A1pp"
-id_ferm = "id" 
-id_ens  = "M4"
-fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/"*"$id_ens"*"_results.h5"
-fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
-fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
-
-id_glue = "A1mp"
-id_ferm = "g5" 
-id_ens  = "M4"
-fn_glue = "/users/nrebelobrito/Reparsing/output_files/glueball_data/"*"$id_ens"*"_results.h5"
-fn_mes  = "/users/nrebelobrito/Reparsing/output_files/meson_singlet_correlators/singlets_smeared_correlators.hdf5"
-fn_full = "/users/nrebelobrito/Reparsing/output_files/final_matrices/"*"$id_ens"*"correlation_matrix_$id_ferm.hdf5"
-write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
+id_glue_array = ["A1pp","A1mp"]
+id_ferm_array = ["id","g5"]
+id_ens_array  = ["M3","M4"]
+for id_ens in id_ens_array
+    for (i,id_ferm) in enumerate(id_ferm_array)
+        id_glue = id_glue_array[i]
+        fn_glue = output_dir_glue * "/" * "$id_ens" * "_glueball_operators.hdf5"
+        fn_mes  = output_dir_mes * "/singlets_smeared_correlators.hdf5"
+        fn_full = output_dir_full * "/" * "$id_ens" * "correlation_matrix_$id_ferm.hdf5"
+        write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
+    end
+end
