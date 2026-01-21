@@ -1,4 +1,4 @@
-using Pkg; Pkg.activate(".")
+using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.update(); Pkg.precompile(); Pkg.activate(".")
 using HDF5
 using Statistics
 using ProgressMeter
@@ -19,34 +19,38 @@ function bin_correlation_marix(file_in,file_out; binsize = 8, batchsize = 50)
     iterator    = Iterators.partition(1:Nmeas, batchsize*binsize) 
     nbins       = length(Iterators.partition(1:Nmeas, binsize))
     corr_binned = zeros(nbins,Nops,Nops,T)
+    vev_binned  = zeros(nbins,Nops)
 
     p = Progress(nbins)
     ind = 0
     for n in iterator
         corr_tmp = fid["full_correlation_matrix"][n,:,:,:]
+        vev_tmp = fid["full_vev"][:,n]
         for m in Iterators.partition(1:length(n),binsize)
             ind += 1
             corr_binned[ind,:,:,:] = dropdims(mean(corr_tmp[m,:,:,:],dims=1),dims=1)
+            vev_binned[ind,:] = dropdims(mean(vev_tmp[:,m],dims=2),dims=2)
             next!(p)
         end
     end
 
     h5write(file_out,"full_correlation_matrix_binned",corr_binned)
+    h5write(file_out,"full_vev_binned",vev_binned)
     _copy_lattice_parameters(file_out,file_in;group="")
 end
 
-file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_id.hdf5"
-file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_id_bin16.hdf5"
+file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id.hdf5"
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id_bin16.hdf5"
 bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
 
-file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_g5.hdf5"
-file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M3correlation_matrix_g5_bin16.hdf5"
+file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5.hdf5"
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5_bin16.hdf5"
 bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
 
-file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_id.hdf5"
-file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_id_bin16.hdf5"
+file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id.hdf5"
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id_bin16.hdf5"
 bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)
 
-file_in  = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_g5.hdf5"
-file_out = "/users/nrebelobrito/Reparsing/output_files/final_matrices/M4correlation_matrix_g5_bin16.hdf5"
+file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5.hdf5"
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5_bin16.hdf5"
 bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 200)

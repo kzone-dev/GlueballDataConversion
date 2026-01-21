@@ -97,7 +97,7 @@ function write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_fer
             vev_glue   = f_glue[id_glue*"_vev"][:,n]
             vev_mesAS  = permutedims(dropdims(mean(ops_mesAS,dims=3),dims=3))
             vev_mesFUN = permutedims(dropdims(mean(ops_mesFUN,dims=3),dims=3))
-            vev_full   = permutedims(vcat(vev_mesFUN,vev_mesAS,vev_glue))
+            vev_full   = permutedims(vcat(vev_glue,vev_mesFUN,vev_mesAS))
         end
         
         # Create block-diagonal gluon matrix and meson-gluon cross corelator
