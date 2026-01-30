@@ -26,17 +26,17 @@ function filter_bad_vevs(vev_data, meson_ops_array; config_number = 2507)
             relative_error = abs(vev_data[iconf,jop] - reference_vev_values[i]) / reference_vev_values_std[i]
             if relative_error> 5
                 bad_indices[iconf] = true
-                #println("Excluding configuration ", iconf, " due to operator ", jop,
-                #        ": vev = ", vev_data[iconf,jop],
-                #        ", reference vev = ", reference_vev_values[i],
-                #        ", relative error= ", relative_error)
+                println("Excluding configuration ", iconf, " due to operator ", jop,
+                        ": vev = ", vev_data[iconf,jop],
+                        ", reference vev = ", reference_vev_values[i],
+                        ", relative error= ", relative_error)
                 break
             end
         end
     end
     return bad_indices
 end
-function bin_correlation_marix(file_in,file_out; binsize = 8, batchsize = 50, include_vev = false, filter_vev = false)
+function bin_correlation_matrix(file_in,file_out; binsize = 8, batchsize = 50, include_vev = false, filter_vev = false)
     fid   = h5open(file_in)
     Nmeas = read(fid,"Nmeas")
     Nops  = read(fid,"Nops")
@@ -83,18 +83,18 @@ function bin_correlation_marix(file_in,file_out; binsize = 8, batchsize = 50, in
     _copy_lattice_parameters(file_out,file_in;group="")
 end
 
-#file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id.hdf5"
-#file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id_bin16.hdf5"
-#bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 50, include_vev = true, filter_vev = true)
+file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id.hdf5"
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id_bin80.hdf5"
+bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = true, filter_vev = true)
 
-#file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5.hdf5"
-#file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5_bin16.hdf5"
-#bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 50, include_vev = false)
+file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5.hdf5"
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5_bin80.hdf5"
+bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = false)
 
 file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id.hdf5"
-file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id_bin16.hdf5"
-bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 50, include_vev = true)
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id_bin80.hdf5"
+bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = true)
 
 file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5.hdf5"
-file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5_bin16.hdf5"
-bin_correlation_marix(file_in,file_out; binsize = 16, batchsize = 50, include_vev = false)
+file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5_bin80.hdf5"
+bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = false)
