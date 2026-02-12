@@ -11,6 +11,7 @@ function parse_commandline()
         "--dir_glue"; help="Path to glueball data file"; required=true
         "--dir_mes"; help="Path to meson singlet correlator file"; required=true
         "--dir_full"; help="Path to output full correlation matrix file"; required=true
+        "--ensemble"; help="Ensemble name (e.g. M3 or M4)"; required=true
     end
     return parse_args(s)
 end
@@ -127,17 +128,15 @@ args = parse_commandline()
 output_dir_glue = args["dir_glue"]
 output_dir_mes  = args["dir_mes"]
 output_dir_full = args["dir_full"]
+ensemble = args["ensemble"]
 
 id_glue_array = ["A1pp","A1mp"]
 id_ferm_array = ["id","g5"]
-id_ens_array  = ["M3","M4"]
 
-for id_ens in id_ens_array
-    for (i,id_ferm) in enumerate(id_ferm_array)
-        id_glue = id_glue_array[i]
-        fn_glue = output_dir_glue * "/" * "$id_ens" * "_glueball_operators.hdf5"
-        fn_mes  = output_dir_mes * "/singlets_smeared_correlators.hdf5"
-        fn_full = output_dir_full * "/" * "$id_ens" * "correlation_matrix_$id_ferm.hdf5"
-        write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, id_ens, save_vev=true)
-    end
+for (i,id_ferm) in enumerate(id_ferm_array)
+    id_glue = id_glue_array[i]
+    fn_glue = joinpath(output_dir_glue, ensemble * "_glueball_operators.hdf5")
+    fn_mes  = joinpath(output_dir_mes, ensemble * "_singlets_smeared_correlators.hdf5")
+    fn_full = joinpath(output_dir_full, ensemble * "_correlation_matrix_$id_ferm.hdf5")
+    write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, ensemble, save_vev=true)
 end
