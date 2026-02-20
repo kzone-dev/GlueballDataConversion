@@ -1,7 +1,20 @@
 using Pkg; Pkg.activate(".")
+Pkg.add("ArgParse")
 using HDF5
 using Statistics
 using ProgressMeter
+using ArgParse
+
+function parse_commandline()
+    s = ArgParseSettings()
+    @add_arg_table s begin
+        "--full_corr_matrix_file"; help="Path to full correlation matrix file"; required=true
+        "--ensemble"; help="Ensemble name (e.g. M3 or M4)"; required=true
+        "--bin_width"; help="Bin width"; required=true; arg_type=Int
+    end
+    return parse_args(s)
+end
+
 function _copy_lattice_parameters(outfile,infile;group="")
     file = h5open(infile)
     entries = filter(!contains(r"(correlation_matrix|singlet_loop)") ,keys(file))
@@ -10,8 +23,8 @@ function _copy_lattice_parameters(outfile,infile;group="")
         h5write(outfile,label,read(file,entry))
     end
 end
-function filter_bad_vevs(vev_data, meson_ops_array; config_number = 2507)
-    # In the M3 ensemble, after config 2507 there are measurements
+function filter_bad_vevs(vev_data, meson_ops_array; config_number = 2535)
+    # In the M3 ensemble, after config 2535 there are measurements
     # with bad vev values for the smeared operators. We filter them out here.
 
     reference_vev_values = dropdims(mean(vev_data[1:config_number,meson_ops_array],dims=1),dims=1)
@@ -36,7 +49,7 @@ function filter_bad_vevs(vev_data, meson_ops_array; config_number = 2507)
     end
     return bad_indices
 end
-function bin_correlation_matrix(file_in,file_out; binsize = 8, batchsize = 50, include_vev = false, filter_vev = false)
+function bin_correlation_matrix(file_in, file_out, number_of_meson_ops; binsize = 8, batchsize = 50, include_vev = false, filter_vev = false)
     fid   = h5open(file_in)
     Nmeas = read(fid,"Nmeas")
     Nops  = read(fid,"Nops")
@@ -44,7 +57,7 @@ function bin_correlation_matrix(file_in,file_out; binsize = 8, batchsize = 50, i
 
     filtered_Nmeas = 1:Nmeas
     if filter_vev
-        bad_indices= filter_bad_vevs(fid["full_vev"], 161:169; config_number = 2507)
+        bad_indices= filter_bad_vevs(fid["full_vev"], (Nops-number_of_meson_ops+1):Nops; config_number = 2535)
         filtered_Nmeas = collect(1:Nmeas)[.!bad_indices]
     end 
     
@@ -83,18 +96,19 @@ function bin_correlation_matrix(file_in,file_out; binsize = 8, batchsize = 50, i
     _copy_lattice_parameters(file_out,file_in;group="")
 end
 
-file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id.hdf5"
-file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_id_bin80.hdf5"
-bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = true, filter_vev = true)
+args = parse_commandline()
+file_in = args["full_corr_matrix_file"]
+ensemble = args["ensemble"]
+bin_width = args["bin_width"]
 
-file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5.hdf5"
-file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M3correlation_matrix_g5_bin80.hdf5"
-bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = false)
+# I can parametrize this but this wont be a part of the final workflow either way
+if ensemble == "M3"
+    filter_vev = true
+    number_of_meson_ops = 9
+else
+    filter_vev = false
+    number_of_meson_ops = 22
+end
 
-file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id.hdf5"
-file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_id_bin80.hdf5"
-bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = true)
-
-file_in  = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5.hdf5"
-file_out = "/users/nrebelobrito/flavour_singlet_and_glueball_mixing_sp4/data/final_correlation_matrices/M4correlation_matrix_g5_bin80.hdf5"
-bin_correlation_matrix(file_in,file_out; binsize = 16, batchsize = 100, include_vev = false)
+file_out = replace(file_in, ".hdf5" => "_bin$(bin_width).hdf5")
+bin_correlation_matrix(file_in,file_out, number_of_meson_ops; binsize = bin_width, batchsize = 100, include_vev = true, filter_vev = filter_vev)
