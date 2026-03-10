@@ -9,6 +9,7 @@ function parse_commandline()
     s = ArgParseSettings()
     @add_arg_table s begin
         "--full_corr_matrix_file"; help="Path to full correlation matrix file"; required=true
+        "--binned_corr_matrix_file"; help="Path to output binned matrix file"; required=true
         "--ensemble"; help="Ensemble name (e.g. M3 or M4)"; required=true
         "--bin_width"; help="Bin width"; required=true; arg_type=Int
     end
@@ -98,6 +99,7 @@ end
 
 args = parse_commandline()
 file_in = args["full_corr_matrix_file"]
+file_out = args["binned_corr_matrix_file"]
 ensemble = args["ensemble"]
 bin_width = args["bin_width"]
 
@@ -110,5 +112,4 @@ else
     number_of_meson_ops = 22
 end
 
-file_out = replace(file_in, ".hdf5" => "_bin$(bin_width).hdf5")
 bin_correlation_matrix(file_in,file_out, number_of_meson_ops; binsize = bin_width, batchsize = 100, include_vev = true, filter_vev = filter_vev)
