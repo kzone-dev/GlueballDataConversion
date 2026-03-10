@@ -14,6 +14,7 @@ function parse_commandline()
         "--meson_gamma"; help="Meson gamma matrix"; required=true
         "--glue_rpc"; help="RPC for glueballs"; required=true
         "--ensemble"; help="Ensemble name (e.g. M3 or M4)"; required=true
+        "--channel"; help="Channel name (e.g scalar/pseudoscalar, must match Snakemake rules)"; required=true
     end
     return parse_args(s)
 end
@@ -134,12 +135,13 @@ output_dir_full = args["dir_full"]
 ensemble = args["ensemble"]
 meson_gamma = args["meson_gamma"]
 glue_rpc = args["glue_rpc"]
+channel_name = args["channel"]
 
 id_glue = glue_rpc
 id_ferm = meson_gamma
 
 fn_glue = joinpath(output_dir_glue, "$(ensemble)_$(id_glue)_glueball_operators.hdf5")
 fn_mes  = joinpath(output_dir_mes, "$(ensemble)_singlets_smeared_correlators.hdf5")
-fn_full = joinpath(output_dir_full, "$(ensemble)_correlation_matrix_$(id_ferm).hdf5")
+fn_full = joinpath(output_dir_full, "$(ensemble)_correlation_matrix_$(channel_name).hdf5")
 
 write_full_correlation_matrix(fn_glue, fn_mes, fn_full, id_glue, id_ferm, ensemble, save_vev=true)
