@@ -65,36 +65,45 @@ function bin_correlation_matrix(file_in, file_out, number_of_meson_ops; binsize 
     iterator    = Iterators.partition(filtered_Nmeas, batchsize*binsize) 
     nbins       = length(Iterators.partition(filtered_Nmeas, binsize))
 
-    corr_binned = zeros(nbins,Nops,Nops,T)
-    if include_vev
-        vev_binned  = zeros(nbins, Nops)  # only if include_vev = true
-    end
-
-    corr_data = read(fid,"full_correlation_matrix")
-    vev_data = include_vev ? read(fid,"full_vev") : nothing
-
-    p = Progress(nbins)
-    ind = 0
-    for n in iterator
-        corr_tmp = corr_data[n,:,:,:]
+    if binsize != 1
+        corr_binned = zeros(nbins,Nops,Nops,T)
         if include_vev
-            vev_tmp = vev_data[n,:]
+            vev_binned  = zeros(nbins, Nops)  # only if include_vev = true
         end
-        for m in Iterators.partition(1:length(n),binsize)
-            ind += 1
-            corr_binned[ind,:,:,:] = dropdims(mean(corr_tmp[m,:,:,:],dims=1),dims=1)
-            if include_vev
-                vev_binned[ind,:] = dropdims(mean(vev_tmp[m,:],dims=1),dims=1)
-            end
-            next!(p)
-        end
-    end
 
-    h5write(file_out,"full_correlation_matrix_binned",corr_binned)
-    if include_vev
-        h5write(file_out,"full_vev_binned",vev_binned)
+        corr_data = read(fid,"full_correlation_matrix")
+        vev_data = include_vev ? read(fid,"full_vev") : nothing
+
+        p = Progress(nbins)
+        ind = 0
+        for n in iterator
+            corr_tmp = corr_data[n,:,:,:]
+            if include_vev
+                vev_tmp = vev_data[n,:]
+            end
+            for m in Iterators.partition(1:length(n),binsize)
+                ind += 1
+                corr_binned[ind,:,:,:] = dropdims(mean(corr_tmp[m,:,:,:],dims=1),dims=1)
+                if include_vev
+                    vev_binned[ind,:] = dropdims(mean(vev_tmp[m,:],dims=1),dims=1)
+                end
+                next!(p)
+            end
+        end
+
+        h5write(file_out,"full_correlation_matrix_binned",corr_binned)
+        if include_vev
+            h5write(file_out,"full_vev_binned",vev_binned)
+        end
+        _copy_lattice_parameters(file_out,file_in;group="")
+    else
+        # If binsize is 1, we just copy the original data without binning
+        h5write(file_out,"full_correlation_matrix_binned",read(fid,"full_correlation_matrix"))
+        if include_vev
+            h5write(file_out,"full_vev_binned",read(fid,"full_vev"))
+        end
+        _copy_lattice_parameters(file_out,file_in;group="")
     end
-    _copy_lattice_parameters(file_out,file_in;group="")
 end
 
 args = parse_commandline()
