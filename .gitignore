@@ -3,5 +3,4 @@ list_*
 *.hdf5
 *.txt
 *.out
-Manifest.toml
 *.sbatch
