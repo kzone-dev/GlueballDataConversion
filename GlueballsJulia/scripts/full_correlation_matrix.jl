@@ -1,5 +1,4 @@
-using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.update(); Pkg.precompile(); Pkg.activate(".")
-Pkg.add("ArgParse")
+using Pkg; Pkg.activate(".")
 using ProgressMeter
 using HDF5
 using BenchmarkTools
