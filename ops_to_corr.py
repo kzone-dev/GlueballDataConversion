@@ -1,11 +1,11 @@
 import os
 import h5py
 import numpy as np
-import scipy.linalg as la
 from natsort import natsorted
 from pathlib import Path
 
-def check_files(fin, fin_ops ,fin_vac, icall=3):
+
+def check_files(fin, fin_ops, fin_vac, icall=3):
     """
     This function will check that the files list_corr
     and list_vac, containing the correlators in binary
@@ -60,6 +60,7 @@ def check_files(fin, fin_ops ,fin_vac, icall=3):
 
     return files_corr, files_vac, files_ops, rep_identifier
 
+
 def read_header(inf):
     """
     This function reads the header part of the
@@ -85,6 +86,7 @@ def read_header(inf):
     # This last one is computed on-the-fly
     Tmax = int(NT / 2 + 1)
     return NX, NY, NZ, NT, Nc, Ndata, bin_size, Nshape, Nbl, Tmax
+
 
 def from_disk(fvac, fcorr, fops, bin_size):
     """
@@ -190,7 +192,9 @@ def from_disk(fvac, fcorr, fops, bin_size):
     NT = head[3]
     Nbin_ops = nmeas_ops // bin_size
 
-    ops_type = np.dtype("(" + str(Nop) + "," + str(NT) + ")f8") #Each op has NT, not Tmax
+    ops_type = np.dtype(
+        "(" + str(Nop) + "," + str(NT) + ")f8"
+    )  # Each op has NT, not Tmax
     raw_tmp = np.empty(bin_size, dtype=ops_type)
     ops = np.empty(Nbin_ops, dtype=ops_type)
     ivevc = 0
@@ -209,10 +213,10 @@ def from_disk(fvac, fcorr, fops, bin_size):
                 print(f0.format(ivevc + 1, ff))
                 oset = 72
                 raw_tmp[i] = np.fromfile(ff, dtype=ops_type, offset=oset, count=1)
-                oset = oset + Nop * NT * 8 #Offsets must be changed as well
+                oset = oset + Nop * NT * 8  # Offsets must be changed as well
             else:
                 raw_tmp[i] = raw
-                oset = oset + Nop * NT * 8 #Offsets must be changed as well
+                oset = oset + Nop * NT * 8  # Offsets must be changed as well
         ops[inb] = np.sum(raw_tmp, axis=0) / bin_size
     ##########################################
 
@@ -227,7 +231,6 @@ def from_disk(fvac, fcorr, fops, bin_size):
     else:
         Nbin = Nbin_ops
     ##########################################
-
 
     Nmeas = Nbin * bin_size
     if Nmeas >= Nbin:
@@ -249,20 +252,29 @@ def from_disk(fvac, fcorr, fops, bin_size):
     Nc = int(head[4])
     Nshape = int(head[7])
     Nblock = int(head[8])
-    Nmeas  = nmeas_ops
+    Nmeas = nmeas_ops
 
     return vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas
 
-def write_listfiles(data_dir,irrep,fn_cor="tmp_cor_list.txt",fn_ops="tmp_ops_list.txt",fn_vac="tmp_vac_list.txt"):
+
+def write_listfiles(
+    data_dir,
+    irrep,
+    fn_cor="tmp_cor_list.txt",
+    fn_ops="tmp_ops_list.txt",
+    fn_vac="tmp_vac_list.txt",
+):
     """
     This function creates a list of the .dat files for the correlators, operators and vevs.
     Performance critical: no
     Input:  String containing a directory, and a string specifying the irrep
     Output: None. Three files are written to disk. The filename can be changed via the optional variables.
     """
-    cor_list = [str(x)+"\n" for x in Path(data_dir).glob('**/corr{}.dat'.format(irrep))]
-    ops_list = [str(x)+"\n" for x in Path(data_dir).glob('**/PL{}.dat'.format(irrep))]
-    vac_list = [str(x)+"\n" for x in Path(data_dir).glob('**/avac0.dat')]
+    cor_list = [
+        str(x) + "\n" for x in Path(data_dir).glob("**/corr{}.dat".format(irrep))
+    ]
+    ops_list = [str(x) + "\n" for x in Path(data_dir).glob("**/PL{}.dat".format(irrep))]
+    vac_list = [str(x) + "\n" for x in Path(data_dir).glob("**/avac0.dat")]
     f_cor = open(fn_cor, "w")
     f_ops = open(fn_ops, "w")
     f_vac = open(fn_vac, "w")
@@ -273,40 +285,89 @@ def write_listfiles(data_dir,irrep,fn_cor="tmp_cor_list.txt",fn_ops="tmp_ops_lis
     f_ops.close()
     f_vac.close()
 
-def remove_listfiles(fn_cor, fn_ops ,fn_vac):
+
+def remove_listfiles(fn_cor, fn_ops, fn_vac):
     os.remove(fn_cor)
     os.remove(fn_ops)
     os.remove(fn_vac)
 
-def write_irrep_data_to_file(filename, irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, mode='a'):
-    ensemble = "ensemble"+"/"+irrep
-    f = h5py.File(filename, mode)
-    f.create_dataset(ensemble+"/"+"files_corrs",data=files_corrs)
-    f.create_dataset(ensemble+"/"+"files_vac"  ,data=files_vac)
-    f.create_dataset(ensemble+"/"+"files_ops"  ,data=files_ops)
-    f.create_dataset(ensemble+"/"+"vev"  ,data=vev)
-    f.create_dataset(ensemble+"/"+"corr" ,data=corr)
-    f.create_dataset(ensemble+"/"+"ops"  ,data=ops)
-    f.create_dataset(ensemble+"/"+"Nbin" ,data=Nbin)
-    f.create_dataset(ensemble+"/"+"Tmax" ,data=Tmax)
-    f.create_dataset(ensemble+"/"+"Nop"  ,data=Nop)
-    f.create_dataset(ensemble+"/"+"NX"  ,data=NX)
-    f.create_dataset(ensemble+"/"+"NY"  ,data=NY)
-    f.create_dataset(ensemble+"/"+"NZ"  ,data=NZ)
-    f.create_dataset(ensemble+"/"+"NT"  ,data=NT)
-    f.create_dataset(ensemble+"/"+"Nc"  ,data=Nc)
-    f.create_dataset(ensemble+"/"+"Nshape" ,data=Nshape)
-    f.create_dataset(ensemble+"/"+"Nblock" ,data=Nblock)
-    f.create_dataset(ensemble+"/"+"Nmeas"  ,data=Nmeas)
 
-irreps  = ["0RPmR","0RPpR"]
+def write_irrep_data_to_file(
+    filename,
+    irrep,
+    files_corrs,
+    files_vac,
+    files_ops,
+    vev,
+    corr,
+    ops,
+    Nbin,
+    Tmax,
+    Nop,
+    NX,
+    NY,
+    NZ,
+    NT,
+    Nc,
+    Nshape,
+    Nblock,
+    Nmeas,
+    mode="a",
+):
+    ensemble = "ensemble" + "/" + irrep
+    f = h5py.File(filename, mode)
+    f.create_dataset(ensemble + "/" + "files_corrs", data=files_corrs)
+    f.create_dataset(ensemble + "/" + "files_vac", data=files_vac)
+    f.create_dataset(ensemble + "/" + "files_ops", data=files_ops)
+    f.create_dataset(ensemble + "/" + "vev", data=vev)
+    f.create_dataset(ensemble + "/" + "corr", data=corr)
+    f.create_dataset(ensemble + "/" + "ops", data=ops)
+    f.create_dataset(ensemble + "/" + "Nbin", data=Nbin)
+    f.create_dataset(ensemble + "/" + "Tmax", data=Tmax)
+    f.create_dataset(ensemble + "/" + "Nop", data=Nop)
+    f.create_dataset(ensemble + "/" + "NX", data=NX)
+    f.create_dataset(ensemble + "/" + "NY", data=NY)
+    f.create_dataset(ensemble + "/" + "NZ", data=NZ)
+    f.create_dataset(ensemble + "/" + "NT", data=NT)
+    f.create_dataset(ensemble + "/" + "Nc", data=Nc)
+    f.create_dataset(ensemble + "/" + "Nshape", data=Nshape)
+    f.create_dataset(ensemble + "/" + "Nblock", data=Nblock)
+    f.create_dataset(ensemble + "/" + "Nmeas", data=Nmeas)
+
+
+irreps = ["0RPmR", "0RPpR"]
 
 data_dir = "/home/fabian/Documents/Physics/Data/DataCSD/Glueballs"
 data_dir = "/home/fabian/Dokumente/Physics/Data/DataCSD/GlueballsNt64"
 
 for ir in irreps:
-    write_listfiles(data_dir,ir)
-    files_corrs, files_vac, files_ops, irrep = check_files("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt");
-    vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas = from_disk(files_vac, files_corrs, files_ops, bin_size=1);
-    write_irrep_data_to_file("hdf5/glue_correlators_Nt64_mf0-0.70.hdf5", irrep, files_corrs, files_vac, files_ops, vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas, mode='a')
+    write_listfiles(data_dir, ir)
+    files_corrs, files_vac, files_ops, irrep = check_files(
+        "tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt"
+    )
+    vev, corr, ops, Nbin, Tmax, Nop, NX, NY, NZ, NT, Nc, Nshape, Nblock, Nmeas = (
+        from_disk(files_vac, files_corrs, files_ops, bin_size=1)
+    )
+    write_irrep_data_to_file(
+        "hdf5/glue_correlators_Nt64_mf0-0.70.hdf5",
+        irrep,
+        files_corrs,
+        files_vac,
+        files_ops,
+        vev,
+        corr,
+        ops,
+        Nbin,
+        Tmax,
+        Nop,
+        NX,
+        NY,
+        NZ,
+        NT,
+        Nc,
+        Nshape,
+        Nblock,
+        Nmeas,
+        mode="a",
+    )
     remove_listfiles("tmp_cor_list.txt", "tmp_ops_list.txt", "tmp_vac_list.txt")
